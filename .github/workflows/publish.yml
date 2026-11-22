@@ -1,0 +1,38 @@
+name: Publish the Android download
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - PlantDistrict.apk
+      - version.txt
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update the public release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(tr -d '[:space:]' < version.txt)"
+          notes=$(printf '%s\n' \
+            "Install Plant District on an Android phone. This link works without a GitHub login." \
+            "" \
+            "https://github.com/orange-groove/plant-district-android/releases/download/android/PlantDistrict.apk" \
+            "" \
+            "1. Open that link on the phone." \
+            "2. Allow the browser or Files app to install unknown apps." \
+            "3. This build is version code ${version}. A newer build replaces this file."
+          )
+          if gh release view android >/dev/null 2>&1; then
+            gh release edit android --title "Plant District for Android" --notes "${notes}" --latest --prerelease=false
+          else
+            gh release create android --title "Plant District for Android" --notes "${notes}" --latest --target "${GITHUB_SHA}"
+          fi
+          gh release upload android PlantDistrict.apk --clobber
